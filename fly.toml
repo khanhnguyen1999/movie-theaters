@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for movie-theaters on 2026-11-03T17:56:58Z
+# fly.toml app configuration file generated for movie-theaters on 2026-11-03T18:08:45Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'movie-theaters'
-primary_region = 'ams'
+primary_region = 'sin'
 
 [build]
 
@@ -18,7 +18,7 @@ primary_region = 'ams'
   destination = '/data'
 
 [http_service]
-  internal_port = 8080
+  internal_port = 3000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
