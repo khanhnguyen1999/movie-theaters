@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rạp Phim Đôi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Lớp CSS3D (iframe YouTube) nằm dưới, canvas WebGL nằm trên và "khoét lỗ" chỗ màn chiếu -->
+  <div id="css-layer"></div>
+  <div id="gl-layer"></div>
+
+  <!-- Sảnh: giới thiệu, tạo phòng, danh sách phòng -->
+  <div id="lobby">
+    <div class="lobby-glow" aria-hidden="true"></div>
+
+    <nav class="nav">
+      <div class="brand"><span class="brand-mark">🎬</span><span class="brand-name">Rạp Phim Đôi</span></div>
+      <label class="name-chip">
+        <span>Bạn là</span>
+        <input id="my-name" maxlength="20" placeholder="nhập tên…" autocomplete="nickname" />
+      </label>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Phòng chiếu riêng · đồng bộ từng giây</p>
+        <h1>Một rạp phim nhỏ,<br /><em>chỉ dành cho hai người.</em></h1>
+        <p class="lead">Mở một phòng, gửi link và mật khẩu cho người ấy, rồi cùng ngồi ghế đôi xem phim — dù hai người đang ở hai nơi.</p>
+        <ul class="hero-points">
+          <li><span>🔒</span>Phòng riêng có mật khẩu</li>
+          <li><span>⏯️</span>Phát, dừng, tua cùng lúc</li>
+          <li><span>💬</span>Chat và thả tim ngay trong rạp</li>
+        </ul>
+      </div>
+
+      <form id="create-form" class="ticket" autocomplete="off" novalidate>
+        <div class="ticket-head">
+          <span class="ticket-label">Vé mời</span>
+          <h2>Mở phòng chiếu mới</h2>
+        </div>
+        <label class="field">
+          <span class="field-label">Tên phòng</span>
+          <input name="name" maxlength="40" required placeholder="VD: Hẹn hò tối thứ 7" />
+        </label>
+        <label class="field">
+          <span class="field-label">Phim khởi chiếu <em>tuỳ chọn</em></span>
+          <input name="video" placeholder="Dán link YouTube…" inputmode="url" />
+        </label>
+        <div id="video-preview" class="video-preview" hidden>
+          <img alt="" />
+          <div class="vp-info"><span class="vp-label">Sẽ chiếu khi mở phòng</span><div class="vp-title"></div></div>
+          <button type="button" class="vp-clear" title="Bỏ phim này">✕</button>
+        </div>
+        <p id="video-hint" class="field-hint">Bỏ trống thì rạp chiếu phim mẫu — vào rạp rồi đổi phim cũng được.</p>
+        <label class="field">
+          <span class="field-label">Mật khẩu phòng</span>
+          <span class="pw">
+            <input name="password" type="password" minlength="4" required placeholder="Ít nhất 4 ký tự" autocomplete="new-password" />
+            <button type="button" class="pw-toggle" title="Hiện / ẩn mật khẩu">👁</button>
+          </span>
+        </label>
+        <fieldset class="field seat-pick">
+          <legend class="field-label">Số ghế</legend>
+          <label><input type="radio" name="maxPeople" value="2" checked /><span>💑 2</span></label>
+          <label><input type="radio" name="maxPeople" value="3" /><span>3</span></label>
+          <label><input type="radio" name="maxPeople" value="4" /><span>4</span></label>
+          <label><input type="radio" name="maxPeople" value="6" /><span>6</span></label>
+          <label><input type="radio" name="maxPeople" value="8" /><span>8</span></label>
+        </fieldset>
+        <div class="ticket-tear" aria-hidden="true"></div>
+        <button type="submit" class="cta">Tạo phòng & vào rạp <span aria-hidden="true">→</span></button>
+        <p class="error" id="create-error"></p>
+      </form>
+    </header>
+
+    <section class="rooms">
+      <div class="rooms-head">
+        <div>
+          <h2>Đang mở cửa <span id="rooms-count"></span></h2>
+          <p class="sub">Bấm vào một phòng để nhập mật khẩu và vào rạp.</p>
+        </div>
+        <div class="rooms-tools">
+          <div class="filters">
+            <button type="button" data-filter="all" class="active">Tất cả</button>
+            <button type="button" data-filter="live">Có người</button>
+            <button type="button" data-filter="empty">Trống</button>
+          </div>
+          <input id="room-search" type="search" placeholder="Tìm phòng…" autocomplete="off" />
+        </div>
+      </div>
+      <div id="rooms-grid"></div>
+      <div id="rooms-empty" class="empty" hidden>
+        <div class="empty-art">🍿</div>
+        <p class="empty-title"></p>
+        <p class="empty-sub"></p>
+      </div>
+    </section>
+
+    <footer class="foot">Rạp Phim Đôi · làm cho những buổi hẹn xem phim ở xa 💌</footer>
+
+    <dialog id="join-dialog">
+      <form id="join-form" autocomplete="off">
+        <div class="jd-poster">
+          <img id="join-thumb" alt="" />
+          <div class="jd-overlay">
+            <span class="ticket-label">Vé vào phòng</span>
+            <h3 id="join-name"></h3>
+            <p id="join-meta"></p>
+          </div>
+        </div>
+        <div class="ticket-tear" aria-hidden="true"></div>
+        <div class="jd-body">
+          <p class="jd-film" id="join-film"></p>
+          <label class="field">
+            <span class="field-label">Mật khẩu phòng</span>
+            <span class="pw">
+              <input name="password" type="password" required autocomplete="current-password" />
+              <button type="button" class="pw-toggle" title="Hiện / ẩn mật khẩu">👁</button>
+            </span>
+          </label>
+          <p class="error" id="join-error"></p>
+          <div class="jd-actions">
+            <button type="button" id="join-cancel" class="ghost">Huỷ</button>
+            <button type="submit" class="cta" id="join-submit">Vào rạp <span aria-hidden="true">→</span></button>
+          </div>
+          <button type="button" id="join-delete" class="link-danger">Xoá phòng này</button>
+        </div>
+      </form>
+    </dialog>
+  </div>
+
+  <!-- Giao diện phủ khi đã vào rạp -->
+  <div id="hud" hidden>
+    <div id="room-info">
+      <div class="room-name"><span class="ri-label">Đang ở phòng</span><b id="room-label"></b></div>
+      <div id="people"></div>
+      <div class="room-actions">
+        <button id="copy-link">Sao chép link mời</button>
+        <button id="leave-room">Rời phòng</button>
+      </div>
+    </div>
+    <div id="hint">Kéo để nhìn xung quanh · Nhìn xuống để thấy bảng điều khiển · Nhấp ghế trống để đổi chỗ · <kbd>Space</kbd> phát/dừng · <kbd>R</kbd> / nhấp đúp: nhìn màn chiếu · <kbd>M</kbd> quản lý phim · <kbd>F</kbd> xem toàn màn hình</div>
+    <div id="chat">
+      <div id="chat-log"></div>
+      <form id="chat-form"><input id="chat-input" maxlength="300" placeholder="Nhắn gì đó… (Enter)" /></form>
+    </div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="unmute" hidden>🔈 Bấm để bật phim</div>
+
+  <!-- Bảng quản lý phim -->
+  <button id="manager-toggle" hidden>🎞️ Quản lý phim <kbd>M</kbd></button>
+
+  <!-- Thanh điều khiển khi xem toàn màn hình -->
+  <div id="video-bar" hidden>
+    <div class="vb-top">
+      <span id="vb-title"></span>
+      <span class="vb-time"><span id="vb-cur">0:00</span> / <span id="vb-dur">0:00</span></span>
+    </div>
+    <input type="range" id="vb-seek" min="0" max="1000" value="0" />
+    <div class="vb-row">
+      <button id="vb-back" title="Lùi 10 giây (←)">⏪</button>
+      <button id="vb-play" class="big" title="Phát / tạm dừng (Space)">▶️</button>
+      <button id="vb-fwd" title="Tới 10 giây (→)">⏩</button>
+      <label class="vb-vol" title="Âm lượng (↑/↓)">🔊 <input type="range" id="vb-vol" min="0" max="100" value="80" /></label>
+      <span class="reacts">
+        <button title="Thả tim">❤️</button><button>😂</button><button>😮</button><button>😢</button><button>🍿</button><button>😘</button>
+      </span>
+      <span class="spacer"></span>
+      <button id="vb-list" title="Quản lý phim (M)">🎞️</button>
+      <button id="vb-exit" title="Về lại rạp (F / Esc / nhấp đúp)">🏛️ Về rạp</button>
+    </div>
+  </div>
+  <aside id="manager" hidden>
+    <header>
+      <h3>🎞️ Quản lý phim</h3>
+      <button id="manager-close" title="Đóng (M)">✕</button>
+    </header>
+
+    <section class="now">
+      <img id="now-thumb" alt="" />
+      <div class="now-info">
+        <div class="label">Đang chiếu</div>
+        <div id="now-title">—</div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="seek-row">
+        <span id="time-cur">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" />
+        <span id="time-dur">0:00</span>
+      </div>
+      <div class="btn-row">
+        <button id="m-back" title="Lùi 10 giây">⏪ 10s</button>
+        <button id="m-play" class="primary">▶️ Phát</button>
+        <button id="m-fwd" title="Tới 10 giây">10s ⏩</button>
+      </div>
+      <div class="btn-row">
+        <button id="m-restart" title="Chiếu lại từ đầu">⏮️ Từ đầu</button>
+        <button id="m-next" title="Phim kế tiếp trong danh sách">⏭️ Phim kế</button>
+      </div>
+      <button id="manager-full" title="Phim phủ kín màn hình, vẫn giữ chat và nút điều khiển (F)">⛶ Xem toàn màn hình</button>
+      <label class="vol">🔊 <input type="range" id="volume" min="0" max="100" value="80" /> <span id="vol-val">80%</span></label>
+    </section>
+
+    <form id="url-form" autocomplete="off">
+      <input id="url-input" placeholder="Dán link YouTube… (youtube.com/watch?v=… hoặc youtu.be/…)" />
+      <div class="btn-row">
+        <button type="submit" value="play" class="primary">▶️ Chiếu ngay</button>
+        <button type="submit" value="queue">➕ Thêm vào danh sách</button>
+      </div>
+      <p id="url-error" class="error"></p>
+    </form>
+
+    <section>
+      <h4>Danh sách chờ <span id="queue-count"></span></h4>
+      <ol id="queue"></ol>
+      <p id="queue-empty" class="muted">Chưa có phim nào. Thêm link ở trên — hết phim hiện tại sẽ tự chiếu phim kế tiếp.</p>
+    </section>
+  </aside>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

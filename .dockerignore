@@ -1,0 +1,8 @@
+node_modules
+data
+.claude
+.git
+*.md
+fly.toml
+Dockerfile
+.dockerignore

@@ -1,0 +1,40 @@
+# Cấu hình Fly.io. Tên app phải là duy nhất trên toàn Fly — nếu "rap-phim-doi" đã có người dùng, đổi tên khác.
+app = "rap-phim-doi"
+primary_region = "sin" # Singapore, gần Việt Nam nhất
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  DB_PATH = "/data/cinema.db"
+
+# Ổ đĩa giữ cơ sở dữ liệu SQLite qua các lần deploy / khởi động lại
+[mounts]
+  source = "cinema_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Không có ai dùng thì máy tự ngủ cho đỡ tốn, có người vào thì tự bật lại (mất vài giây)
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 500
+    hard_limit = 1000
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "5s"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
